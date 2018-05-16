@@ -1,4 +1,7 @@
 const Joi = require('joi');
+
+const db = require('./db')
+
 const express = require('express');
 const app = express();
 
@@ -11,13 +14,24 @@ const tasks = [
 ];
 
 app.get('/tasks', (req, res) => {
-	res.send(tasks);
+	console.log("/tasks");
+	db.query('SELECT * FROM tasks', (err, result) => {
+		if(err){
+			return res.status(404).send('Error', err);
+		} else{
+			res.send(result.rows);
+		}
+	});
 });
 
 app.get('/tasks/:id', (req, res) => {
-	const task = tasks.find(c => c.id === parseInt(req.params.id));
-	if(!task) return res.status(404).send('The task with the given id was not found.');
-	res.send(task);
+	db.query('SELECT * FROM tasks WHERE id = $1', [req.params.id], (err, result)=> {
+		if(result.rowCount == 0){
+			return res.status(404).send('The task with the given id was not found.');
+		} else{
+			res.send(result.rows);
+		}
+	});
 });
 
 app.listen(3000, () => console.log('Listening on port 3000...'));
