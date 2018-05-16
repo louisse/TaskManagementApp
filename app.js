@@ -32,18 +32,14 @@ app.post('/tasks/', (req, res) => {
   };
   Joi.validate(req.body, schema, (err, value) => {
     if(err){
-      res.status(400).send(err.details[0].message);
+      return res.status(400).send(err.details[0].message);
     } else{
       const { name, description} = value;
-      db.query('INSERT INTO tasks(name, description) VALUES($1, $2) RETURNING id', [name, description], (err, result)=> {
+      db.query('INSERT INTO tasks(name, description) VALUES($1, $2) RETURNING id, name, description', [name, description], (err, result)=> {
         if(!result.rowCount){
           return res.status(404).send('Error: ', err);
         } else{
-          res.send({
-            id: result.rows[0].id,
-            name: name,
-            description: description
-          });
+          res.send(result.rows[0]);
         }
       });
     }
@@ -62,6 +58,34 @@ app.delete('/tasks/:id', (req, res) => {
           return res.status(404).send('Error: ', err);
         } else{
           res.send(task);
+        }
+      });
+    }
+  });
+});
+
+app.put('/tasks/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('SELECT * FROM tasks WHERE id = $1', [id], (err, result)=> {
+    if(!result.rowCount){
+      return res.status(404).send('Error: ', err);
+    } else{
+      const schema = {
+        name: Joi.string().min(3).max(150).required(),
+         description: Joi.string().min(3).max(255).required(),
+      };
+      Joi.validate(req.body, schema, (err, value) => {
+        if(err){
+          return res.status(400).send(err.details[0].message);
+        } else{
+          const { name, description } = value;
+          db.query('UPDATE tasks SET name=$1, description=$2 WHERE id=$3 RETURNING id, name, description', [name, description, id], (err, result)=> {
+            if(!result.rowCount){
+              return res.status(404).send('Error: ', err);
+            } else{
+              res.send(result.rows[0]);
+            }
+          });
         }
       });
     }
