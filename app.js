@@ -1,18 +1,37 @@
+const path = require('path');
 const express = require('express');
 const Joi = require('joi');
 const db = require('./db')
+const bodyParser = require('body-parser');
+
 const app = express();
+const urlencodedParser = bodyParser.urlencoded({ extended: false });
+
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'hbs');
 
 app.use(express.json());
 
+
+app.get('/test', (req, res) => {
+  //res.sendFile(path.join(__dirname, 'test.html'));
+  res.render('index', { title: 'Cool, huh!', condition: true, anyArray: [1,2,3] });
+});
+
+
 app.get('/tasks', (req, res) => {
-  db.query('SELECT * FROM tasks', (err, result) => {
+  db.query('SELECT * FROM tasks ORDER BY id', (err, result) => {
     if(!result.rowCount){
       return res.status(404).send('Error: ', err);
     } else{
-      res.send(result.rows);
+      //res.send(result.rows);
+      res.render('index', { title: 'Tasks DB', rows: result.rows });
     }
   });
+});
+
+app.get('/tasks/add', (req, res) => {
+  res.render('add_form', { title: 'Add Task Form', action: '/tasks/' });
 });
 
 app.get('/tasks/:id', (req, res) => {
@@ -25,7 +44,7 @@ app.get('/tasks/:id', (req, res) => {
   });
 });
 
-app.post('/tasks/', (req, res) => {
+app.post('/tasks/', urlencodedParser, (req, res, next) => {
   const schema = {
     name: Joi.string().min(3).max(150).required(),
      description: Joi.string().min(3).max(255).required(),
@@ -39,7 +58,7 @@ app.post('/tasks/', (req, res) => {
         if(!result.rowCount){
           return res.status(404).send('Error: ', err);
         } else{
-          res.send(result.rows[0]);
+          res.redirect('/tasks');
         }
       });
     }
